@@ -23,6 +23,9 @@ export class UserDto extends User {
   @ApiResponseProperty()
   username: string;
 
+  @ApiResponseProperty()
+  email: string;
+
   constructor(args?: Partial<UserDto>) {
     super();
     Object.assign(this, args);

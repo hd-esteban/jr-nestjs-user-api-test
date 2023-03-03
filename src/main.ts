@@ -6,7 +6,16 @@ import { AppModule } from './app.module';
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
 
-  app.useGlobalPipes(new ValidationPipe({ transform: true }));
+  app.useGlobalPipes(
+    new ValidationPipe({
+      transform: true,
+      // Added whitelist flag to remove unknow properties by DTO.
+      // https://docs.nestjs.com/techniques/validation#stripping-properties
+      whitelist: true,
+      // throw error when wrong properties are passed.
+      forbidNonWhitelisted: true,
+    }),
+  );
 
   const config = new DocumentBuilder()
     .setTitle('Sold.com | Jr. BE API Test')
