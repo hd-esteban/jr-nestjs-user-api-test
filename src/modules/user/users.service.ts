@@ -14,23 +14,12 @@ export class UsersService {
   constructor(@InjectModel(User.name, MONGO_DB_NAME) private userModel: Model<UserDoc>) {}
 
   /** Create User */
-  async createUser(user: Partial<User>): Promise<User> {
+  async create(user: Partial<User>): Promise<User> {
     const newUser = new this.userModel(user);
     return await newUser.save();
   }
 
-  /** Delete User By Object Id */
-  async deleteUser(_id: string): Promise<User> {
-    try {
-      const user = await this.userModel.findOneAndDelete({ _id });
-      return user;
-    } catch (e) {
-      this.logger.error(e.message);
-      return null;
-    }
-  }
-
-  /** Find By Object Id */
+  /** Find all objects */
   async findAll(): Promise<User[]> {
     try {
       const users = await this.userModel.find();
@@ -40,10 +29,48 @@ export class UsersService {
       return null;
     }
   }
-  /** Find By Object Id */
-  async findByObjectId(_id: string): Promise<User> {
+
+  /** Find one user by Object Id */
+  async findOne(_id: string): Promise<User> {
     try {
       const user = await this.userModel.findById(_id);
+      return user;
+    } catch (e) {
+      this.logger.error(e.message);
+      return null;
+    }
+  }
+
+  /** Update */
+  async update(_id: string, user: Partial<User>): Promise<User> {
+    try {
+      const userUpdated = await this.userModel.findByIdAndUpdate(_id, user, {
+        returnOriginal: false,
+      });
+      return userUpdated;
+    } catch (e) {
+      this.logger.error(e.message);
+      return null;
+    }
+  }
+
+  /** Partial Update */
+  async patch(_id: string, user: UpdateUserDto): Promise<User> {
+    try {
+      const userUpdated = await this.userModel.findByIdAndUpdate(_id, user, {
+        returnOriginal: false,
+      });
+      return userUpdated;
+    } catch (e) {
+      this.logger.error(e.message);
+      return null;
+    }
+  }
+
+  /** Delete User By Object Id */
+  async remove(_id: string): Promise<User> {
+    try {
+      const user = await this.userModel.findOneAndDelete({ _id });
       return user;
     } catch (e) {
       this.logger.error(e.message);
@@ -64,23 +91,10 @@ export class UsersService {
     }
   }
 
-  /** Partial Patch */
-  async patchUser(_id: string, user: UpdateUserDto): Promise<User> {
-    try {
-      const userUpdated = await this.userModel.findByIdAndUpdate(_id, user, {
-        returnOriginal: false,
-      });
-      return userUpdated;
-    } catch (e) {
-      this.logger.error(e.message);
-      return null;
-    }
-  }
-
   /** Search By Criteria */
   async search(searchCriteria: SearchUserDto): Promise<User[]> {
     try {
-      const users = await this.userModel.find(searchCriteria);
+      const users = this.userModel.find(searchCriteria);
       return users;
     } catch (e) {
       this.logger.error(e.message);

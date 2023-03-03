@@ -7,6 +7,8 @@ import {
   Param,
   Patch,
   Post,
+  Put,
+  Query,
 } from '@nestjs/common';
 import { ApiNotFoundResponse, ApiOkResponse, ApiOperation, ApiTags } from '@nestjs/swagger';
 import { CsvParser } from 'src/providers/csv-parser.provider';
@@ -22,27 +24,31 @@ export class UsersController {
   /** Controller Constructor */
   constructor(private readonly usersService: UsersService) {}
 
-  /** Create User */
-  @Post('/create')
-  @ApiOperation({ summary: 'Create a new user' })
-  @ApiOkResponse({ type: UserDto })
-  async create(@Body() body: CreateUserDto): Promise<UserDto> {
-    return await this.usersService.createUser(body);
+  /** Search By Criteria*/
+  /** Search endpoint moved to the top to prevent express js gets confused with the findOne endpoint:
+   *  https://github.com/nestjs/nest/issues/995 */
+  @Get('search/')
+  @ApiOperation({
+    summary: `Search a user by any combination of these fields: firstName, LastName, userName, email.`,
+  })
+  @ApiOkResponse({ type: SearchUserDto })
+  @ApiNotFoundResponse()
+  async search(@Query() searchCriteria: SearchUserDto): Promise<SearchUserDto[]> {
+    const users = await this.usersService.search(searchCriteria);
+    // in case we didn't find users throw not found exception.
+    if (!users || (Array.isArray(users) && users.length === 0)) {
+      throw new NotFoundException(`Users not found by provided criteria`);
+    }
+    // otherwise return users.
+    return users;
   }
 
-  /** Delete User */
-  @Delete('/:_id')
-  @ApiOperation({ summary: 'Delete a user' })
-  async deleteById(@Param('_id') _id: string): Promise<UserDto> {
-    const deletedUser = await this.usersService.deleteUser(_id);
-    // If user was not deleted throw exception
-    if (!deletedUser) {
-      throw new NotFoundException(
-        `User with id '${_id}' was not deleted. Please confirm _id parameterr is correct.`,
-      );
-    }
-    // Retrieve deleted user
-    return deletedUser;
+  /** Create User */
+  @Post()
+  @ApiOperation({ summary: 'Create user' })
+  @ApiOkResponse({ type: UserDto })
+  async create(@Body() body: CreateUserDto): Promise<UserDto> {
+    return await this.usersService.create(body);
   }
 
   /** Get All Users */
@@ -50,7 +56,7 @@ export class UsersController {
   @ApiOperation({ summary: 'Get all users' })
   @ApiOkResponse({ type: UserDto })
   @ApiNotFoundResponse()
-  async getAll(): Promise<UserDto[]> {
+  async findAll(): Promise<UserDto[]> {
     const users = await this.usersService.findAll();
     // If user was not retrieved throw exception.
     if (!users) {
@@ -62,11 +68,11 @@ export class UsersController {
 
   /** Get User By _id */
   @Get('/:_id')
-  @ApiOperation({ summary: 'Find user by mongo object id' })
+  @ApiOperation({ summary: 'Find user by id' })
   @ApiOkResponse({ type: UserDto })
   @ApiNotFoundResponse()
-  async getById(@Param('_id') _id: string): Promise<UserDto> {
-    const user = await this.usersService.findByObjectId(_id);
+  async findOne(@Param('_id') _id: string): Promise<UserDto> {
+    const user = await this.usersService.findOne(_id);
     // If user was not retrieved throw exception.
     if (!user) {
       throw new NotFoundException(
@@ -77,12 +83,57 @@ export class UsersController {
     return user;
   }
 
+  /** Update User */
+  @Put('/:_id')
+  @ApiOperation({ summary: 'Update all user data' })
+  @ApiOkResponse({ type: UserDto })
+  @ApiNotFoundResponse()
+  async update(@Param('_id') _id: string, @Body() body: CreateUserDto): Promise<UserDto> {
+    const updatedUser = await this.usersService.update(_id, body);
+    // If updatedUser was not retrieved throw exception.
+    if (!updatedUser) {
+      throw new NotFoundException(`User id '${_id}' not found.`);
+    }
+    // Retrieve updated user
+    return updatedUser;
+  }
+
+  /** Patch User */
+  @Patch('/:_id')
+  @ApiOperation({ summary: 'Partial updates of an user' })
+  @ApiOkResponse({ type: UserDto })
+  @ApiNotFoundResponse()
+  async patch(@Param('_id') _id: string, @Body() body: UpdateUserDto): Promise<UserDto> {
+    const updatedUser = await this.usersService.patch(_id, body);
+    // If updatedUser was not retrieved throw exception.
+    if (!updatedUser) {
+      throw new NotFoundException(`User id '${_id}' not found.`);
+    }
+    // Retrieve updated user
+    return updatedUser;
+  }
+
+  /** Delete User */
+  @Delete('/:_id')
+  @ApiOperation({ summary: 'Delete user' })
+  async remove(@Param('_id') _id: string): Promise<UserDto> {
+    const deletedUser = await this.usersService.remove(_id);
+    // If user was not deleted throw exception
+    if (!deletedUser) {
+      throw new NotFoundException(
+        `User with id '${_id}' was not deleted. Please confirm _id parameterr is correct.`,
+      );
+    }
+    // Retrieve deleted user
+    return deletedUser;
+  }
+
   /** Get User By username */
   @Get('/username/:username')
   @ApiOperation({ summary: 'Find user by username' })
   @ApiOkResponse({ type: UserDto })
   @ApiNotFoundResponse()
-  async getByUsername(@Param('username') username: string): Promise<UserDto> {
+  async findByUserName(@Param('username') username: string): Promise<UserDto> {
     const user = await this.usersService.findByUserName(username);
     // If user was not retrieved throw exception.
     if (!user) {
@@ -92,38 +143,6 @@ export class UsersController {
     }
     // Retrieve user
     return user;
-  }
-
-  /** Update User */
-  @Patch('/update/:_id')
-  @ApiOperation({ summary: 'Partially update a user' })
-  @ApiOkResponse({ type: UserDto })
-  @ApiNotFoundResponse()
-  async updateById(@Param('_id') _id: string, @Body() body: UpdateUserDto): Promise<UserDto> {
-    const updatedUser = await this.usersService.patchUser(_id, body);
-    // If updatedUser was not retrieved throw exception.
-    if (!updatedUser) {
-      throw new NotFoundException(`User id '${_id}' not found.`);
-    }
-    // Retrieve updated user
-    return updatedUser;
-  }
-
-  /** Search By Criteria*/
-  @Post('search')
-  @ApiOperation({
-    summary: `Search a user by any combination of these fields: firstName, LastName, userName.`,
-  })
-  @ApiOkResponse({ type: SearchUserDto })
-  @ApiNotFoundResponse()
-  async search(@Body() searchCriteria: SearchUserDto): Promise<SearchUserDto[]> {
-    const users = await this.usersService.search(searchCriteria);
-    // in case we didn't find users throw not found exception.
-    if (!users || (Array.isArray(users) && users.length === 0)) {
-      throw new NotFoundException(`Users not found by provided criteria`);
-    }
-    // otherwise return users.
-    return users;
   }
 
   /** Seeder */

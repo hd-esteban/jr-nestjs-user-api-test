@@ -25,7 +25,7 @@ export class User {
   username: string;
 
   @Prop({ unique: true, index: true })
-  email: string;
+  email: string; // Email property added.
 }
 
 export const UserSchema = SchemaFactory.createForClass(User);
